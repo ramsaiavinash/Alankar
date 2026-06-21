@@ -1,0 +1,46 @@
+{
+  "name": "alankar-pooja-stores",
+  "version": "1.0.0",
+  "description": "Alankar Pooja Stores — Sales Management Desktop App",
+  "main": "main.js",
+  "author": "Alankar Pooja Stores",
+  "license": "Proprietary",
+  "scripts": {
+    "start": "electron .",
+    "build-win": "electron-builder --win",
+    "build-mac": "electron-builder --mac",
+    "build-linux": "electron-builder --linux"
+  },
+  "build": {
+    "appId": "com.alankar.poojastore",
+    "productName": "Alankar Pooja Stores",
+    "files": ["**/*", "!node_modules/.cache", "!dist", "!.git"],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "assets/icon.icns",
+      "category": "public.app-category.business"
+    },
+    "linux": {
+      "target": "AppImage",
+      "category": "Office"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Alankar Pooja Stores"
+    }
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.3.0",
+    "electron": "^30.0.0"
+  },
+  "devDependencies": {
+    "electron-builder": "^24.13.0"
+  }
+}

@@ -7,7 +7,10 @@
   "license": "Proprietary",
   "scripts": {
     "start": "electron .",
-    "build-win": "electron-builder --win",
+    "postinstall": "electron-builder install-app-deps",
+    "rebuild": "electron-rebuild -f -w better-sqlite3",
+    "build-win": "electron-builder --win nsis",
+    "build-portable": "electron-builder --win portable",
     "build-mac": "electron-builder --mac",
     "build-linux": "electron-builder --linux"
   },
@@ -16,8 +19,15 @@
     "productName": "Alankar Pooja Stores",
     "files": ["**/*", "!node_modules/.cache", "!dist", "!.git"],
     "win": {
-      "target": "nsis",
-      "icon": "assets/icon.ico"
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+      ],
+      "icon": "assets/icon.ico",
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
+    },
+    "portable": {
+      "artifactName": "AlankarPoojaStores-Portable-${version}.exe"
     },
     "mac": {
       "target": "dmg",
@@ -37,10 +47,11 @@
     }
   },
   "dependencies": {
-    "better-sqlite3": "^11.3.0",
-    "electron": "^30.0.0"
+    "better-sqlite3": "^11.3.0"
   },
   "devDependencies": {
-    "electron-builder": "^24.13.0"
+    "electron": "^30.0.0",
+    "electron-builder": "^24.13.0",
+    "@electron/rebuild": "^3.6.0"
   }
 }

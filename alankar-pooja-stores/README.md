@@ -88,6 +88,12 @@ For A4 printers, the bill template auto-fits the page.
 
 **"Cannot find module 'better-sqlite3'"** → Run `npm install` again.
 
+**"Database Error: ERR_DLOPEN_FAILED" / "NODE_MODULE_VERSION mismatch"** → Native module compiled for wrong Node version. Run:
+```
+npx electron-rebuild
+```
+Then `npm start` again.
+
 **App won't open** → Try `npm start` from Command Prompt to see error messages.
 
 **Data missing after reinstall** → Restore your `alankar.db` backup to the AppData folder above.

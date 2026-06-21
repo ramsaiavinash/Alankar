@@ -280,7 +280,7 @@ input[readonly]{background:var(--bg3);color:var(--text2)}
               <span class="ct">Customer & Items</span>
               <div class="action-bar">
                 <button class="btn btn-p" onclick="openAddItem()">+ Add Item</button>
-                <button class="btn" onclick="openScanModal()">⌶ Scan</button>
+                <button class="btn" onclick="document.getElementById('bill-scan').focus()">⌶ Focus Scanner</button>
               </div>
             </div>
             <div class="fg2" style="margin-bottom:12px">
@@ -301,6 +301,22 @@ input[readonly]{background:var(--bg3);color:var(--text2)}
                 <label class="fl">Cashier</label>
                 <input id="b-cashier" placeholder="Cashier name"/>
               </div>
+            </div>
+
+            <!-- BARCODE SCAN INPUT (always-on, auto-add items) -->
+            <div style="background:linear-gradient(135deg,#FFF7DC,#FAEFD4);border:2px solid var(--gold);border-radius:var(--radius);padding:14px;margin-bottom:14px;box-shadow:var(--shadow-sm)">
+              <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+                <div style="font-size:24px">🔍</div>
+                <div style="flex:1;min-width:200px">
+                  <label class="fl" style="display:block;margin-bottom:5px">Scan Barcode (TVS Scanner Ready)</label>
+                  <input id="bill-scan" placeholder="Scan a barcode here — item auto-adds on Enter..." autocomplete="off" style="font-family:'Courier New',monospace;font-size:15px;font-weight:700;border-color:var(--gold-dark);background:#fff"/>
+                </div>
+                <div style="font-size:11px;color:var(--text2);font-weight:600;text-align:right">
+                  <div>🔫 Just scan with TVS gun</div>
+                  <div>or type code + <span class="kbd">Enter</span></div>
+                </div>
+              </div>
+              <div id="scan-feedback" style="margin-top:8px;font-size:12.5px;font-weight:600;display:none;padding:6px 10px;border-radius:6px"></div>
             </div>
             <div class="tbl-wrap"><table id="bill-tbl">
               <thead><tr>
@@ -430,30 +446,31 @@ input[readonly]{background:var(--bg3);color:var(--text2)}
           </div>
           <div id="bc-display" style="display:none">
             <div class="bc-box">
-              <canvas id="bc-canvas" width="280" height="80" style="width:100%;max-width:280px;height:80px"></canvas>
+              <canvas id="bc-canvas" width="320" height="100" style="width:100%;max-width:320px;height:100px"></canvas>
               <div class="bc-num" id="bc-num"></div>
             </div>
-            <div style="font-size:13px;font-weight:700;text-align:center;margin-bottom:10px" id="bc-pname"></div>
-            <div style="display:flex;gap:7px">
-              <button class="btn btn-p" style="flex:1;justify-content:center" onclick="printBarcodeLabel()">🖨 Print Label</button>
+            <div style="font-size:14px;font-weight:700;text-align:center;margin-bottom:12px" id="bc-pname"></div>
+            <div style="display:flex;gap:7px;margin-bottom:8px">
+              <button class="btn btn-p" style="flex:1;justify-content:center" onclick="printBarcodeLabel()">🖨 Print 1 Label</button>
               <button class="btn" style="flex:1;justify-content:center" onclick="copyBC()">⎘ Copy Code</button>
             </div>
+            <button class="btn btn-gold btn-block" onclick="openLabelSheetModal()">🏷️ Print Label Sheet (Multiple)</button>
           </div>
         </div>
         <div class="card">
-          <div class="ct" style="margin-bottom:12px">Scan / Lookup Barcode</div>
+          <div class="ct" style="margin-bottom:12px">Scan / Lookup Barcode (Test TVS Scanner)</div>
           <div class="fg" style="margin-bottom:12px">
             <label class="fl">Type or scan barcode</label>
-            <input id="bc-lookup" placeholder="Enter barcode..." oninput="lookupBC()"/>
+            <input id="bc-lookup" placeholder="Scan with TVS gun or type..." autocomplete="off" oninput="lookupBC()"/>
           </div>
-          <div id="bc-result" style="font-size:12px;color:var(--text3);padding:14px;background:var(--bg3);border-radius:var(--radius);text-align:center">Enter a barcode to look up its product.</div>
+          <div id="bc-result" style="font-size:13px;color:var(--text3);padding:16px;background:var(--bg3);border-radius:var(--radius);text-align:center">Scan a product or enter a barcode to look it up.</div>
         </div>
       </div>
       <div class="card">
         <div class="ct" style="margin-bottom:10px">All Product Barcodes</div>
         <div class="tbl-wrap"><table>
-          <thead><tr><th style="width:40%">Product</th><th style="width:24%">Barcode</th><th style="width:20%">Category</th><th style="width:16%">Price</th></tr></thead>
-          <tbody id="bc-all"><tr class="empty-row"><td colspan="4">Loading...</td></tr></tbody>
+          <thead><tr><th style="width:36%">Product</th><th style="width:22%">Barcode</th><th style="width:18%">Category</th><th style="width:12%">Price</th><th style="width:12%">Stock</th></tr></thead>
+          <tbody id="bc-all"><tr class="empty-row"><td colspan="5">Loading...</td></tr></tbody>
         </table></div>
       </div>
     </section>
@@ -695,24 +712,6 @@ input[readonly]{background:var(--bg3);color:var(--text2)}
   </div>
 </div>
 
-<div id="m-scan" class="overlay">
-  <div class="modal" style="width:380px">
-    <div class="modal-hd"><span class="modal-title">Scan Barcode</span><button class="close-btn" onclick="cm('m-scan')">×</button></div>
-    <div class="fg" style="margin-bottom:11px">
-      <label class="fl">Barcode</label>
-      <input id="scan-bc" placeholder="Scan or type barcode..." autocomplete="off" oninput="scanLookup()"/>
-    </div>
-    <div id="scan-info" style="font-size:12px;color:var(--text3);margin-bottom:11px;padding:11px;background:var(--bg3);border-radius:var(--radius);text-align:center">Waiting for scan...</div>
-    <div id="scan-add" style="display:none">
-      <div class="fg2">
-        <div class="fg"><label class="fl">Qty</label><input id="scan-qty" type="number" value="1" min="1"/></div>
-        <div class="fg"><label class="fl">Rate (₹)</label><input id="scan-rate" type="number" step="0.01"/></div>
-      </div>
-      <button class="btn btn-s btn-block" onclick="addScanned()">+ Add to Bill</button>
-    </div>
-  </div>
-</div>
-
 <div id="m-prod" class="overlay">
   <div class="modal" style="width:480px">
     <div class="modal-hd"><span class="modal-title" id="pm-title">Add Product</span><button class="close-btn" onclick="cm('m-prod')">×</button></div>
@@ -740,8 +739,15 @@ input[readonly]{background:var(--bg3);color:var(--text2)}
       <div class="fg"><label class="fl">Opening Stock</label><input id="p-stock" type="number" value="0" min="0"/></div>
       <div class="fg"><label class="fl">Min Stock Alert Level</label><input id="p-minstk" type="number" value="10" min="0"/></div>
       <div class="fg" style="grid-column:1/-1">
-        <label class="fl">Barcode (leave blank to auto-generate)</label>
-        <div style="display:flex;gap:7px"><input id="p-bc" placeholder="Custom barcode or leave blank"/><button class="btn" onclick="autoBC()" style="white-space:nowrap">Auto-gen</button></div>
+        <label class="fl">Barcode (scan with TVS gun, or auto-generate, or type manually)</label>
+        <div style="display:flex;gap:7px">
+          <input id="p-bc" placeholder="Scan with TVS scanner or enter manually" autocomplete="off"/>
+          <button class="btn btn-gold" onclick="autoBC()" style="white-space:nowrap" title="Generate a new random barcode (for unbranded items)">⚡ Auto-gen</button>
+        </div>
+        <div style="font-size:11px;color:var(--text2);margin-top:4px;line-height:1.5">
+          <b>Type A (branded):</b> Click in the box above and scan the product's existing barcode with TVS gun.<br/>
+          <b>Type B (unbranded):</b> Click "Auto-gen" to create a new barcode, then print labels from the Barcodes page.
+        </div>
       </div>
     </div>
     <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px">
@@ -781,6 +787,37 @@ input[readonly]{background:var(--bg3);color:var(--text2)}
     <div style="display:flex;justify-content:flex-end;gap:8px">
       <button class="btn" onclick="cm('m-crpay')">Cancel</button>
       <button class="btn btn-s" onclick="saveCreditPay()">Record Payment</button>
+    </div>
+  </div>
+</div>
+
+<div id="m-labelsheet" class="overlay">
+  <div class="modal" style="width:420px">
+    <div class="modal-hd"><span class="modal-title">Print Barcode Label Sheet</span><button class="close-btn" onclick="cm('m-labelsheet')">×</button></div>
+    <div id="ls-product-info" style="font-size:13px;padding:11px;background:var(--bg3);border-radius:var(--radius);margin-bottom:14px"></div>
+    <div class="fg2">
+      <div class="fg">
+        <label class="fl">Labels per Page</label>
+        <select id="ls-count">
+          <option value="24">24 (large — 4×6, 50×40mm)</option>
+          <option value="40" selected>40 (medium — 4×10, 50×28mm)</option>
+          <option value="65">65 (small — 5×13, 38×21mm Avery L7160)</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label class="fl">Number of Pages</label>
+        <input id="ls-pages" type="number" value="1" min="1" max="20"/>
+      </div>
+    </div>
+    <div class="fg" style="margin-bottom:12px">
+      <label class="fl"><input type="checkbox" id="ls-showprice" checked style="width:auto;margin-right:6px"/> Print MRP / Price on label</label>
+    </div>
+    <div class="fg" style="margin-bottom:12px">
+      <label class="fl"><input type="checkbox" id="ls-showname" checked style="width:auto;margin-right:6px"/> Print product name on label</label>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px">
+      <button class="btn" onclick="cm('m-labelsheet')">Cancel</button>
+      <button class="btn btn-p" onclick="printLabelSheet()">🖨 Print Sheet</button>
     </div>
   </div>
 </div>
@@ -1172,6 +1209,11 @@ async function loadBillPage() {
   // Pre-fill cashier from current settings (unless user already typed something for this bill)
   const bCashier = document.getElementById('b-cashier');
   if (bCashier && !bCashier.value) bCashier.value = settings.cashier_name || 'Admin';
+  // Auto-focus scanner input
+  setTimeout(() => {
+    const inp = document.getElementById('bill-scan');
+    if (inp) inp.focus();
+  }, 150);
 }
 
 async function lookupCust() {
@@ -1226,39 +1268,64 @@ function addItem() {
   cm('m-additem'); renderBill();
 }
 
-function openScanModal() {
-  document.getElementById('scan-bc').value = '';
-  document.getElementById('scan-info').textContent = 'Waiting for scan...';
-  document.getElementById('scan-add').style.display = 'none';
-  om('m-scan');
-  setTimeout(() => document.getElementById('scan-bc').focus(), 100);
+// === BILL SCAN INPUT — AUTO-ADD ON ENTER ===
+function setupBillScanner() {
+  const inp = document.getElementById('bill-scan');
+  if (!inp) return;
+  // Listen for Enter (TVS scanner sends Enter at end of barcode)
+  inp.addEventListener('keydown', async (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    const code = inp.value.trim();
+    if (!code) return;
+    await processScannedBarcode(code);
+    inp.value = '';
+    inp.focus();
+  });
 }
 
-function scanLookup() {
-  const bc = document.getElementById('scan-bc').value.trim();
-  if (bc.length < 4) return;
-  const p = allProds.find(x => x.barcode === bc);
-  if (p) {
-    document.getElementById('scan-info').innerHTML = `<strong style="color:var(--success);font-size:13px">${esc(p.name)}</strong><br/><span style="color:var(--text2)">₹${p.selling_price} · Stock: ${p.stock} · GST: ${p.gst_rate}%</span>`;
-    document.getElementById('scan-rate').value = p.selling_price;
-    document.getElementById('scan-add').style.display = 'block';
-    scanProdId = p.id;
-    document.getElementById('scan-qty').focus();
-  } else {
-    document.getElementById('scan-info').textContent = 'Product not found for this barcode.';
-    document.getElementById('scan-add').style.display = 'none';
+async function processScannedBarcode(code) {
+  const fb = document.getElementById('scan-feedback');
+  // Find product by barcode
+  const p = allProds.find(x => x.barcode === code) || await API.products.byBarcode(code);
+  if (!p) {
+    fb.style.display = 'block';
+    fb.style.background = 'var(--danger-bg)';
+    fb.style.color = 'var(--danger)';
+    fb.innerHTML = `❌ <b>Not found:</b> ${esc(code)} — register this product first in Products page.`;
+    setTimeout(() => { fb.style.display = 'none'; }, 4000);
+    return;
   }
-}
-
-function addScanned() {
-  const p = allProds.find(x => x.id === scanProdId);
-  if (!p) return;
-  const qty = parseInt(document.getElementById('scan-qty').value) || 1;
-  const rate = parseFloat(document.getElementById('scan-rate').value) || 0;
-  const base = qty*rate, gstAmt = base*(p.gst_rate/100);
-  billItems.push({product_id:p.id, product_name:p.name, hsn:p.hsn||'', qty, rate, gst_rate:p.gst_rate, base_amount:base, gst_amount:gstAmt, total_amount:base+gstAmt});
-  cm('m-scan'); renderBill();
-  showAlert(p.name + ' added to bill.');
+  if (p.stock <= 0) {
+    fb.style.display = 'block';
+    fb.style.background = 'var(--warning-bg)';
+    fb.style.color = 'var(--warning)';
+    fb.innerHTML = `⚠️ <b>${esc(p.name)}</b> is out of stock!`;
+    setTimeout(() => { fb.style.display = 'none'; }, 3000);
+    return;
+  }
+  // Check if item already in bill — increment qty instead of duplicate
+  const existing = billItems.find(it => it.product_id === p.id);
+  if (existing) {
+    existing.qty += 1;
+    existing.base_amount = existing.qty * existing.rate;
+    existing.gst_amount = existing.base_amount * (existing.gst_rate/100);
+    existing.total_amount = existing.base_amount + existing.gst_amount;
+  } else {
+    const base = p.selling_price;
+    const gstAmt = base * (p.gst_rate/100);
+    billItems.push({
+      product_id: p.id, product_name: p.name, hsn: p.hsn||'',
+      qty: 1, rate: p.selling_price, gst_rate: p.gst_rate,
+      base_amount: base, gst_amount: gstAmt, total_amount: base + gstAmt,
+    });
+  }
+  renderBill();
+  fb.style.display = 'block';
+  fb.style.background = 'var(--success-bg)';
+  fb.style.color = 'var(--success)';
+  fb.innerHTML = `✅ <b>${esc(p.name)}</b> added (₹${p.selling_price}) — Total items: ${billItems.length}`;
+  setTimeout(() => { fb.style.display = 'none'; }, 2200);
 }
 
 function remItem(i) { billItems.splice(i,1); renderBill(); }
@@ -1507,6 +1574,11 @@ function showProdModal(id=null) {
     document.getElementById('p-gst').value = 5;
   }
   om('m-prod');
+  // Auto-focus name field for new product, barcode field for branded items scenario
+  setTimeout(() => {
+    if (id) document.getElementById('p-bc').focus();
+    else document.getElementById('p-name').focus();
+  }, 200);
 }
 
 function editProd(id) { showProdModal(id); }
@@ -1634,13 +1706,14 @@ async function loadBarcodes() {
   const s = document.getElementById('bc-sel');
   s.innerHTML = '<option value="">-- Select Product --</option>' + allProds.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
   const t = document.getElementById('bc-all');
-  t.innerHTML = allProds.map(p => `
+  t.innerHTML = allProds.length ? allProds.map(p => `
     <tr>
       <td>${esc(p.name)}</td>
-      <td style="font-family:monospace;font-size:11px">${esc(p.barcode||'—')}</td>
+      <td style="font-family:monospace;font-size:11px;font-weight:700">${esc(p.barcode||'—')}</td>
       <td>${esc(p.category)}</td>
       <td>${fmt(p.selling_price)}</td>
-    </tr>`).join('');
+      <td class="${p.stock<p.min_stock?'low':'good'}">${p.stock}</td>
+    </tr>`).join('') : '<tr class="empty-row"><td colspan="5">No products yet</td></tr>';
 }
 
 function genBarcode() {
@@ -1649,26 +1722,60 @@ function genBarcode() {
   document.getElementById('bc-display').style.display = 'block';
   document.getElementById('bc-num').textContent = p.barcode || '';
   document.getElementById('bc-pname').textContent = p.name + ' — ' + fmt(p.selling_price);
-  drawBarcode(p.barcode || '', 'bc-canvas');
+  drawBarcode(p.barcode || '', 'bc-canvas', {showText:true, margin:14});
 }
 
-function drawBarcode(code, canvasId) {
-  const cv = document.getElementById(canvasId);
-  const ctx = cv.getContext('2d');
-  ctx.fillStyle = '#fff'; ctx.fillRect(0,0,cv.width,cv.height);
-  if (!code) return;
-  let seed = 0;
-  for (const c of code) seed = (seed*31 + c.charCodeAt(0)) & 0xffff;
-  ctx.fillStyle = '#000';
-  let x = 12;
-  for (let i = 0; i < 75; i++) {
-    const w = ((seed * (i+19) * 13) & 7) % 3 + 1;
-    if (i % 2 === 0) ctx.fillRect(x, 6, w, cv.height-22);
-    x += w + 1;
-    if (x > cv.width - 12) break;
+// === REAL Code-128 BARCODE ENCODER (scannable by any scanner) ===
+const C128 = ["11011001100","11001101100","11001100110","10010011000","10010001100","10001001100","10011001000","10011000100","10001100100","11001001000","11001000100","11000100100","10110011100","10011011100","10011001110","10111001100","10011101100","10011100110","11001110010","11001011100","11001001110","11011100100","11001110100","11101101110","11101001100","11100101100","11100100110","11101100100","11100110100","11100110010","11011011000","11011000110","11000110110","10100011000","10001011000","10001000110","10110001000","10001101000","10001100010","11010001000","11000101000","11000100010","10110111000","10110001110","10001101110","10111011000","10111000110","10001110110","11101110110","11010001110","11000101110","11011101000","11011100010","11011101110","11101011000","11101000110","11100010110","11101101000","11101100010","11100011010","11101111010","11001000010","11110001010","10100110000","10100001100","10010110000","10010000110","10000101100","10000100110","10110010000","10110000100","10011010000","10011000010","10000110100","10000110010","11000010010","11001010000","11110111010","11000010100","10001111010","10100111100","10010111100","10010011110","10111100100","10011110100","10011110010","11110100100","11110010100","11110010010","11011011110","11011110110","11110110110","10101111000","10100011110","10001011110","10111101000","10111100010","11110101000","11110100010","10111011110","10111101110","11101011110","11110101110","11010000100","11010010000","11010011100","1100011101011"];
+
+function encodeCode128(text) {
+  // Code-128B (standard ASCII alphanumeric)
+  const startB = 104;
+  const stop = 106;
+  let pattern = C128[startB];
+  let checksum = startB;
+  for (let i = 0; i < text.length; i++) {
+    const v = text.charCodeAt(i) - 32;
+    if (v < 0 || v > 94) continue; // skip out-of-range
+    pattern += C128[v];
+    checksum += v * (i + 1);
   }
-  ctx.fillStyle = '#000'; ctx.font = 'bold 10px monospace'; ctx.textAlign = 'center';
-  ctx.fillText(code, cv.width/2, cv.height-4);
+  checksum %= 103;
+  pattern += C128[checksum];
+  pattern += C128[stop];
+  return pattern;
+}
+
+function drawBarcode(text, canvasIdOrEl, opts) {
+  opts = opts || {};
+  const cv = typeof canvasIdOrEl === 'string' ? document.getElementById(canvasIdOrEl) : canvasIdOrEl;
+  if (!cv) return;
+  const ctx = cv.getContext('2d');
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, cv.width, cv.height);
+  if (!text) return;
+  const pattern = encodeCode128(String(text));
+  const showText = opts.showText !== false;
+  const textHeight = showText ? 14 : 0;
+  const margin = opts.margin != null ? opts.margin : 10;
+  const usableW = cv.width - margin * 2;
+  const moduleW = usableW / pattern.length;
+  const barTop = 2;
+  const barH = cv.height - textHeight - 4;
+
+  ctx.fillStyle = '#000';
+  for (let i = 0; i < pattern.length; i++) {
+    if (pattern[i] === '1') {
+      // Draw slightly wider to avoid pixel rounding gaps
+      ctx.fillRect(margin + i * moduleW, barTop, moduleW + 0.5, barH);
+    }
+  }
+  if (showText) {
+    ctx.fillStyle = '#000';
+    ctx.font = 'bold 11px "Courier New",monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(text, cv.width / 2, cv.height - 2);
+  }
 }
 
 function lookupBC() {
@@ -1699,21 +1806,97 @@ function copyBC() {
 function printBarcodeLabel() {
   const p = allProds.find(x => x.id === parseInt(document.getElementById('bc-sel').value));
   if (!p) return;
-  const cv = document.getElementById('bc-canvas');
-  const imgData = cv.toDataURL();
+  // Generate barcode as data URL
+  const tmpCanvas = document.createElement('canvas');
+  tmpCanvas.width = 320; tmpCanvas.height = 100;
+  drawBarcode(p.barcode||'', tmpCanvas, {showText:true,margin:14});
+  const imgData = tmpCanvas.toDataURL();
   const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Label</title>
   <style>
-    body{font-family:Arial;text-align:center;padding:12px;margin:0;width:220px}
-    img{width:200px;height:60px}
+    *{margin:0;padding:0;box-sizing:border-box;-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important}
+    body{font-family:Arial;text-align:center;padding:14px;width:240px;color:#000}
+    .name{font-size:12px;font-weight:700;margin:2px 0;color:#000}
+    .store{font-size:11px;font-weight:700;color:#000;margin-bottom:3px}
+    img{width:220px;height:70px}
+    .price{font-size:15px;font-weight:900;margin:4px 0;color:#000}
     @media print{body{padding:0}}
   </style></head><body>
-    <p style="font-size:12px;font-weight:700;margin:4px 0">${esc(settings.store_name||'Alankar')}</p>
-    <p style="font-size:11px;margin:2px 0">${esc(p.name)}</p>
-    <img src="${imgData}"/><br/>
-    <p style="font-size:13px;font-weight:700;margin:4px 0">MRP: ₹${p.selling_price}</p>
-    <script>window.onload=function(){window.print();};<\/script>
+    <div class="store">${esc(settings.store_name||'Alankar')}</div>
+    <div class="name">${esc(p.name)}</div>
+    <img src="${imgData}"/>
+    <div class="price">MRP: ₹${p.selling_price}</div>
+    <script>window.onload=function(){setTimeout(function(){window.print();},150);};<\/script>
   </body></html>`;
   API.printHTML(html);
+}
+
+function openLabelSheetModal() {
+  const p = allProds.find(x => x.id === parseInt(document.getElementById('bc-sel').value));
+  if (!p) { showAlert('Select a product first','e'); return; }
+  document.getElementById('ls-product-info').innerHTML = `<strong>${esc(p.name)}</strong><br/>Barcode: <code>${esc(p.barcode)}</code> · MRP: ₹${p.selling_price}`;
+  om('m-labelsheet');
+}
+
+function printLabelSheet() {
+  const p = allProds.find(x => x.id === parseInt(document.getElementById('bc-sel').value));
+  if (!p) return;
+  const perPage = parseInt(document.getElementById('ls-count').value);
+  const pages = parseInt(document.getElementById('ls-pages').value) || 1;
+  const showPrice = document.getElementById('ls-showprice').checked;
+  const showName = document.getElementById('ls-showname').checked;
+
+  // Layout configurations
+  const layouts = {
+    24: {cols:4, rows:6, labelW:50, labelH:40, gap:2, bcW:160, bcH:55},  // 50×40mm
+    40: {cols:4, rows:10, labelW:50, labelH:28, gap:2, bcW:160, bcH:38}, // 50×28mm
+    65: {cols:5, rows:13, labelW:38, labelH:21, gap:2, bcW:120, bcH:28}, // 38×21mm Avery
+  };
+  const L = layouts[perPage];
+
+  // Pre-render barcode once at high resolution
+  const tmpCanvas = document.createElement('canvas');
+  tmpCanvas.width = 400; tmpCanvas.height = 120;
+  drawBarcode(p.barcode||'', tmpCanvas, {showText:false, margin:18});
+  const bcImg = tmpCanvas.toDataURL();
+
+  // Build labels
+  let labelsHTML = '';
+  for (let pg = 0; pg < pages; pg++) {
+    let pageHTML = '<div class="page">';
+    for (let i = 0; i < perPage; i++) {
+      pageHTML += `<div class="lbl">
+        ${showName ? `<div class="lbl-name">${esc(p.name)}</div>` : ''}
+        <img src="${bcImg}" class="lbl-bc"/>
+        <div class="lbl-num">${esc(p.barcode||'')}</div>
+        ${showPrice ? `<div class="lbl-price">MRP: ₹${p.selling_price}</div>` : ''}
+      </div>`;
+    }
+    pageHTML += '</div>';
+    labelsHTML += pageHTML;
+  }
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Label Sheet - ${esc(p.name)}</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important}
+    @page{size:A4;margin:5mm}
+    body{font-family:Arial;color:#000;background:#fff}
+    .page{display:grid;grid-template-columns:repeat(${L.cols},${L.labelW}mm);gap:${L.gap}mm;padding:5mm;page-break-after:always;justify-content:center}
+    .page:last-child{page-break-after:auto}
+    .lbl{width:${L.labelW}mm;height:${L.labelH}mm;border:1px dashed #888;padding:1mm;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;text-align:center}
+    .lbl-name{font-size:8pt;font-weight:700;line-height:1.1;margin-bottom:1mm;color:#000;max-height:6mm;overflow:hidden}
+    .lbl-bc{width:${L.bcW*0.16}mm;height:${L.bcH*0.16}mm;max-width:${L.labelW-4}mm;display:block}
+    .lbl-num{font-size:6pt;font-family:'Courier New',monospace;font-weight:700;letter-spacing:0.5px;color:#000}
+    .lbl-price{font-size:9pt;font-weight:900;color:#000;margin-top:0.5mm}
+    @media print{
+      .lbl{border:none}
+      body{background:#fff}
+    }
+  </style></head><body>
+    ${labelsHTML}
+    <script>window.onload=function(){setTimeout(function(){window.print();},250);};<\/script>
+  </body></html>`;
+  API.printHTML(html);
+  cm('m-labelsheet');
 }
 
 async function loadCredit() {
@@ -2176,6 +2359,7 @@ async function saveCust() {
     await loadSettings();
     await loadBillPage();
     await loadDash();
+    setupBillScanner();
   } catch (e) { showError(e); }
 })();
 </script>

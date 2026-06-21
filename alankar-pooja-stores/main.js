@@ -3,6 +3,22 @@ const path = require('path');
 const fs = require('fs');
 
 let mainWindow;
+let db = null;
+
+// Load database first, with error handling
+try {
+  db = require('./db');
+} catch (err) {
+  console.error('FATAL: Could not load database module', err);
+  app.whenReady().then(() => {
+    dialog.showErrorBox(
+      'Database Error',
+      'Could not load the database.\n\n' + err.message +
+      '\n\nTry running: npm install\nThen restart the app.'
+    );
+    app.quit();
+  });
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -11,7 +27,7 @@ function createWindow() {
     minWidth: 1024,
     minHeight: 640,
     title: 'Alankar Pooja Stores',
-    backgroundColor: '#f7f6f2',
+    backgroundColor: '#EEE5D3',
     show: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -57,7 +73,7 @@ function createWindow() {
               type: 'info',
               title: 'Alankar Pooja Stores',
               message: 'Alankar Pooja Stores',
-              detail: 'Sales Management System\nVersion 1.0.0\n\nLocal SQLite storage. Offline-first.',
+              detail: 'Sales Management System\nVersion 1.0.5\n\nLocal SQLite storage. Offline-first.\nWith TVS barcode scanner support.',
               buttons: ['OK'],
             });
           },
@@ -69,7 +85,7 @@ function createWindow() {
 }
 
 async function handleBackup() {
-  const db = require('./db');
+  if (!db) { dialog.showErrorBox('Backup error', 'Database not loaded'); return; }
   const dbPath = db.Backup.getDbPath();
   const defaultName = 'alankar-backup-' + new Date().toISOString().split('T')[0] + '.db';
   const result = await dialog.showSaveDialog(mainWindow, {
@@ -91,67 +107,89 @@ async function handleBackup() {
   }
 }
 
-app.whenReady().then(() => {
-  createWindow();
+// Wrap a handler with error logging — so errors don't silently fail
+function safeHandle(channel, fn) {
+  ipcMain.handle(channel, async (...args) => {
+    try {
+      return await fn(...args);
+    } catch (err) {
+      console.error('[IPC ERROR]', channel, err);
+      throw new Error(err.message || String(err));
+    }
+  });
+}
 
-  const db = require('./db');
+// REGISTER ALL IPC HANDLERS BEFORE createWindow — eliminates race condition
+function registerHandlers() {
+  if (!db) return;
   const { Products, Customers, Bills, Stock, Credit, Reports, Settings, Backup } = db;
 
-  ipcMain.handle('products:list',        ()           => Products.list());
-  ipcMain.handle('products:byId',        (_, id)      => Products.byId(id));
-  ipcMain.handle('products:byBarcode',   (_, bc)      => Products.byBarcode(bc));
-  ipcMain.handle('products:insert',      (_, p)       => Products.insert(p));
-  ipcMain.handle('products:update',      (_, p)       => Products.update(p));
-  ipcMain.handle('products:remove',      (_, id)      => Products.remove(id));
-  ipcMain.handle('products:adjustStock', (_, id, d)   => Products.adjustStock(id, d));
+  safeHandle('products:list',        ()           => Products.list());
+  safeHandle('products:byId',        (_, id)      => Products.byId(id));
+  safeHandle('products:byBarcode',   (_, bc)      => Products.byBarcode(bc));
+  safeHandle('products:insert',      (_, p)       => Products.insert(p));
+  safeHandle('products:update',      (_, p)       => Products.update(p));
+  safeHandle('products:remove',      (_, id)      => Products.remove(id));
+  safeHandle('products:adjustStock', (_, id, d)   => Products.adjustStock(id, d));
 
-  ipcMain.handle('customers:list',    ()       => Customers.list());
-  ipcMain.handle('customers:byPhone', (_, ph)  => Customers.byPhone(ph));
-  ipcMain.handle('customers:insert',  (_, c)   => Customers.insert(c));
+  safeHandle('customers:list',    ()       => Customers.list());
+  safeHandle('customers:byPhone', (_, ph)  => Customers.byPhone(ph));
+  safeHandle('customers:insert',  (_, c)   => Customers.insert(c));
 
-  ipcMain.handle('bills:save',  (_, b, items) => Bills.save(b, items));
-  ipcMain.handle('bills:list',  (_, f, t, m)  => Bills.list(f, t, m));
-  ipcMain.handle('bills:byId',  (_, id)       => Bills.byId(id));
-  ipcMain.handle('bills:items', (_, id)       => Bills.items(id));
+  safeHandle('bills:save',  (_, b, items) => Bills.save(b, items));
+  safeHandle('bills:list',  (_, f, t, m)  => Bills.list(f, t, m));
+  safeHandle('bills:byId',  (_, id)       => Bills.byId(id));
+  safeHandle('bills:items', (_, id)       => Bills.items(id));
 
-  ipcMain.handle('stock:add',     (_, e) => Stock.add(e));
-  ipcMain.handle('stock:history', ()     => Stock.history());
+  safeHandle('stock:add',     (_, e) => Stock.add(e));
+  safeHandle('stock:history', ()     => Stock.history());
 
-  ipcMain.handle('credit:recordPayment', (_, p) => Credit.recordPayment(p));
-  ipcMain.handle('credit:entries',       ()    => Credit.entries());
-  ipcMain.handle('credit:payments',      ()    => Credit.payments());
-  ipcMain.handle('credit:totals',        ()    => Credit.totals());
+  safeHandle('credit:recordPayment', (_, p) => Credit.recordPayment(p));
+  safeHandle('credit:entries',       ()    => Credit.entries());
+  safeHandle('credit:payments',      ()    => Credit.payments());
+  safeHandle('credit:totals',        ()    => Credit.totals());
 
-  ipcMain.handle('reports:dashboard', ()      => Reports.dashboard());
-  ipcMain.handle('reports:gst',       (_, m)  => Reports.gst(m));
-  ipcMain.handle('reports:gstFull',   (_, m)  => Reports.gstFull(m));
-  ipcMain.handle('reports:monthly',   (_, m)  => Reports.monthly(m));
+  safeHandle('reports:dashboard', ()      => Reports.dashboard());
+  safeHandle('reports:gst',       (_, m)  => Reports.gst(m));
+  safeHandle('reports:gstFull',   (_, m)  => Reports.gstFull(m));
+  safeHandle('reports:monthly',   (_, m)  => Reports.monthly(m));
 
-  ipcMain.handle('settings:getAll',  ()           => Settings.getAll());
-  ipcMain.handle('settings:set',     (_, k, v)    => Settings.set(k, v));
-  ipcMain.handle('settings:setMany', (_, obj)     => Settings.setMany(obj));
+  safeHandle('settings:getAll',  ()           => Settings.getAll());
+  safeHandle('settings:set',     (_, k, v)    => Settings.set(k, v));
+  safeHandle('settings:setMany', (_, obj)     => Settings.setMany(obj));
 
-  ipcMain.handle('backup:export',    () => handleBackup());
-  ipcMain.handle('backup:getDbPath', () => Backup.getDbPath());
+  safeHandle('backup:export',    () => handleBackup());
+  safeHandle('backup:getDbPath', () => Backup.getDbPath());
 
-  ipcMain.handle('print:html', (_, htmlContent) => {
-    const printWindow = new BrowserWindow({
-      width: 420,
-      height: 700,
-      show: false,
-      title: 'Print',
-      parent: mainWindow,
-      webPreferences: { nodeIntegration: false, sandbox: true },
-    });
-    printWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(htmlContent));
-    printWindow.webContents.once('did-finish-load', () => {
-      setTimeout(() => {
-        printWindow.webContents.print({ silent: false, printBackground: true }, () => {
-          printWindow.close();
-        });
-      }, 400);
+  safeHandle('print:html', (_, htmlContent) => {
+    return new Promise((resolve) => {
+      const printWindow = new BrowserWindow({
+        width: 420,
+        height: 700,
+        show: false,
+        title: 'Print',
+        parent: mainWindow,
+        webPreferences: { nodeIntegration: false, sandbox: true },
+      });
+      printWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(htmlContent));
+      printWindow.webContents.once('did-finish-load', () => {
+        setTimeout(() => {
+          printWindow.webContents.print({ silent: false, printBackground: true }, () => {
+            printWindow.close();
+            resolve(true);
+          });
+        }, 400);
+      });
     });
   });
+
+  console.log('[IPC] All 30 handlers registered successfully');
+}
+
+app.whenReady().then(() => {
+  // CRITICAL: Register handlers BEFORE creating window — no race condition possible
+  registerHandlers();
+  createWindow();
 });
 
 app.on('window-all-closed', () => {

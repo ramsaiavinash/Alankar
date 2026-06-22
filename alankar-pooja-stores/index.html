@@ -835,7 +835,7 @@ input[readonly]{background:var(--bg3);color:var(--text2)}
       <label class="fl"><input type="checkbox" id="ls-showname" checked style="width:auto;margin-right:6px"/> Show product name</label>
     </div>
     <div class="fg" style="margin-bottom:14px">
-      <label class="fl"><input type="checkbox" id="ls-showstore" checked style="width:auto;margin-right:6px"/> Show store name</label>
+      <label class="fl"><input type="checkbox" id="ls-showstore" style="width:auto;margin-right:6px"/> Show store name (extra line — usually off)</label>
     </div>
     <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px">
       <button class="btn" onclick="cm('m-labelsheet')">Cancel</button>
@@ -1942,39 +1942,39 @@ function printTSCLabels() {
 // TSC ROLL PRINT — labels in 2-up rows continuously, optimized for TSC TE244 203DPI
 function buildAndPrintTSCLabels(product, qty, opts) {
   opts = opts || {};
+  // DEFAULT: hide store name (user request — keep label minimal for scanning)
   const showPrice = opts.showPrice !== false;
   const showName  = opts.showName  !== false;
-  const showStore = opts.showStore !== false;
+  const showStore = opts.showStore === true;  // OFF by default
   const s = settings;
 
   const labelW = parseFloat(s.tsc_label_width)  || 38;  // mm
   const labelH = parseFloat(s.tsc_label_height) || 25;  // mm
   const cols   = parseInt(s.tsc_columns)        || 2;
   const cGap   = parseFloat(s.tsc_column_gap)   || 2;   // mm
-  const rGap   = parseFloat(s.tsc_row_gap)      || 2;   // mm
 
-  // Total "page" width = labels + gaps
+  // CRITICAL: @page height MUST equal label height (no row gap added).
+  // TSC die-cut printer handles inter-label gaps automatically via gap sensor.
   const pageW = (labelW * cols) + (cGap * (cols - 1));
-  // Each printed "page" = one row of labels (TSC feeds one row at a time)
-  const pageH = labelH + rGap;
+  const pageH = labelH;
   const rows = Math.ceil(qty / cols);
 
-  // Pre-render barcode at high resolution for crispness
+  // Pre-render barcode at high resolution for crispness on 203DPI thermal printer
   const bcCanvas = document.createElement('canvas');
-  // Scale: at 203 DPI, 1mm = 8 pixels. Make barcode area ~30mm wide × 8mm tall
   bcCanvas.width = 400;
   bcCanvas.height = 90;
-  drawBarcode(product.barcode || '', bcCanvas, {showText:false, margin:16});
+  drawBarcode(product.barcode || '', bcCanvas, {showText:false, margin:14});
   const bcImg = bcCanvas.toDataURL();
 
-  // Build label HTML
+  // Compact label layout: barcode (biggest) → number → name → MRP
+  // Total content height target: ~22mm to fit comfortably in 25mm
   function makeLabel() {
     return `<div class="lbl">
-      ${showStore ? `<div class="lbl-store">${esc((s.store_name||'STORE').toUpperCase())}</div>` : ''}
-      ${showName  ? `<div class="lbl-name">${esc(truncate(product.name, 24))}</div>` : ''}
       <img src="${bcImg}" class="lbl-bc" alt="bc"/>
       <div class="lbl-num">${esc(product.barcode||'')}</div>
-      ${showPrice ? `<div class="lbl-price">Rs.${Number(product.selling_price).toFixed(2)}</div>` : ''}
+      ${showName  ? `<div class="lbl-name">${esc(truncate(product.name, 22))}</div>` : ''}
+      ${showPrice ? `<div class="lbl-price">MRP: ₹${Number(product.selling_price).toFixed(2)}</div>` : ''}
+      ${showStore ? `<div class="lbl-store">${esc((s.store_name||'STORE').toUpperCase())}</div>` : ''}
     </div>`;
   }
 
@@ -2001,20 +2001,22 @@ function buildAndPrintTSCLabels(product, qty, opts) {
       size: ${pageW}mm ${pageH}mm;
       margin: 0;
     }
-    html,body{background:#fff;color:#000;font-family:Arial,sans-serif;width:${pageW}mm}
+    html,body{background:#fff;color:#000;font-family:Arial,sans-serif;width:${pageW}mm;margin:0;padding:0}
     .page{
       width:${pageW}mm;
       height:${pageH}mm;
       page-break-after:always;
       page-break-inside:avoid;
       overflow:hidden;
+      margin:0;
+      padding:0;
     }
     .page:last-child{page-break-after:auto}
-    .row{display:flex;gap:${cGap}mm;width:${pageW}mm;height:${labelH}mm}
+    .row{display:flex;gap:${cGap}mm;width:${pageW}mm;height:${labelH}mm;margin:0;padding:0}
     .lbl{
       width:${labelW}mm;
       height:${labelH}mm;
-      padding:0.8mm 1.2mm;
+      padding:0.4mm 1mm;
       display:flex;
       flex-direction:column;
       align-items:center;
@@ -2023,20 +2025,52 @@ function buildAndPrintTSCLabels(product, qty, opts) {
       text-align:center;
       background:#fff;
       color:#000;
+      line-height:1;
     }
     .lbl-blank{visibility:hidden}
-    .lbl-store{font-size:6pt;font-weight:900;line-height:1;color:#000;letter-spacing:0.3px;margin-bottom:0.3mm;text-transform:uppercase}
-    .lbl-name{font-size:6.5pt;font-weight:700;line-height:1.05;color:#000;margin-bottom:0.4mm;max-height:3mm;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;width:100%}
     .lbl-bc{
-      width:${Math.min(labelW - 4, 34)}mm;
-      height:${Math.min(labelH * 0.4, 9)}mm;
+      width:${Math.min(labelW - 3, 35)}mm;
+      height:9mm;
       display:block;
+      margin-bottom:0.3mm;
       image-rendering:pixelated;
       image-rendering:-moz-crisp-edges;
       image-rendering:crisp-edges;
     }
-    .lbl-num{font-size:5.5pt;font-family:'Courier New',monospace;font-weight:700;letter-spacing:0.4px;color:#000;line-height:1;margin-top:0.3mm}
-    .lbl-price{font-size:8pt;font-weight:900;color:#000;line-height:1.1;margin-top:0.3mm}
+    .lbl-num{
+      font-size:5.5pt;
+      font-family:'Courier New',monospace;
+      font-weight:700;
+      letter-spacing:0.3px;
+      color:#000;
+      line-height:1;
+      margin-bottom:0.5mm;
+    }
+    .lbl-name{
+      font-size:7pt;
+      font-weight:700;
+      line-height:1;
+      color:#000;
+      margin-bottom:0.3mm;
+      max-height:2.8mm;
+      overflow:hidden;
+      white-space:nowrap;
+      text-overflow:ellipsis;
+      width:100%;
+    }
+    .lbl-price{
+      font-size:8.5pt;
+      font-weight:900;
+      color:#000;
+      line-height:1;
+    }
+    .lbl-store{
+      font-size:5pt;
+      font-weight:700;
+      color:#000;
+      line-height:1;
+      margin-top:0.3mm;
+    }
     @media print{
       html,body{margin:0;padding:0}
     }

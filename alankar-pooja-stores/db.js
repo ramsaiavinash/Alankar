@@ -127,6 +127,13 @@ const defaultSettings = {
   cashier_name:  'Admin',
   bill_footer:   'Thank you for your purchase! Visit Again. Jai Mata Di',
   print_size:    '80mm',
+  // TSC label printer settings
+  tsc_label_width:  '38',  // mm — single label width
+  tsc_label_height: '25',  // mm — single label height
+  tsc_column_gap:   '2',   // mm — gap between the 2 columns
+  tsc_row_gap:      '2',   // mm — gap between rows
+  tsc_columns:      '2',   // labels per row (TE244 = 2)
+  tsc_printer_name: 'TSC TE244',
 };
 for (const [k, v] of Object.entries(defaultSettings)) {
   db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)').run(k, v);

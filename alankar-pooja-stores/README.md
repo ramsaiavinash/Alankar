@@ -84,6 +84,32 @@ For A4 printers, the bill template auto-fits the page.
 
 ---
 
+## 🏷️ TSC TE244 Label Printer Setup
+
+The app now supports **TSC TE244 barcode label printer** for product labels.
+
+### Quick setup:
+
+1. **Install TSC driver** — Download from https://www.tscprinters.com → "TE244" → Driver. Install. Connect printer via USB.
+2. **Open app → Settings → TSC Label Printer Settings**
+3. Default values: 38mm × 25mm × 2-up × 2mm gaps (matches standard Indian retail labels)
+4. Click **"🖨 Print Test Label"** → 4 test labels print
+5. Check alignment — if labels drift, adjust width/height by ±0.5mm and re-test
+
+### Print labels for a product:
+
+- **Quick:** Products page → click 🏷️ icon next to product → enter quantity → Print
+- **Multi-step:** Barcodes page → select product → "Print to TSC TE244 (Multiple Labels)"
+
+When the print dialog opens, **select the TSC TE244 printer** (not your default A4/thermal printer).
+
+### Tips for clean scannable labels:
+- Set TSC darkness to **8-12** (out of 15) for crisp black bars
+- Use the **A4 fallback mode** if you don't have the TSC ready (prints on regular paper sheets)
+- Each TSC label costs ~₹0.10–0.15 depending on roll quality
+
+---
+
 ## 🆘 Common Issues
 
 **"Cannot find module 'better-sqlite3'"** → Run `npm install` again.

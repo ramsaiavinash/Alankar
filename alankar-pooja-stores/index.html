@@ -454,7 +454,7 @@ input[readonly]{background:var(--bg3);color:var(--text2)}
               <button class="btn btn-p" style="flex:1;justify-content:center" onclick="printBarcodeLabel()">🖨 Print 1 Label</button>
               <button class="btn" style="flex:1;justify-content:center" onclick="copyBC()">⎘ Copy Code</button>
             </div>
-            <button class="btn btn-gold btn-block" onclick="openLabelSheetModal()">🏷️ Print Label Sheet (Multiple)</button>
+            <button class="btn btn-gold btn-block" onclick="openLabelSheetModal()">🏷️ Print to TSC TE244 (Multiple Labels)</button>
           </div>
         </div>
         <div class="card">
@@ -683,6 +683,25 @@ input[readonly]{background:var(--bg3);color:var(--text2)}
         <div id="db-path-info" style="margin-top:12px;font-size:11px;color:var(--text3);font-family:'Courier New',monospace;display:none;padding:10px;background:var(--bg3);border-radius:var(--radius);word-break:break-all"></div>
       </div>
       <div class="card">
+        <div class="ct" style="margin-bottom:14px">🏷️ TSC Label Printer Settings</div>
+        <p style="color:var(--text2);font-size:12.5px;margin-bottom:14px;line-height:1.6">Configure the size of your label rolls. Measurements must match your actual labels — even 1mm off causes drift after many labels. Click "Print Test Label" after saving to verify alignment.</p>
+        <div class="fg3">
+          <div class="fg"><label class="fl">Label Width (mm)</label><input id="s-tsc-w" type="number" step="0.5" placeholder="38"/></div>
+          <div class="fg"><label class="fl">Label Height (mm)</label><input id="s-tsc-h" type="number" step="0.5" placeholder="25"/></div>
+          <div class="fg"><label class="fl">Labels per Row</label>
+            <select id="s-tsc-cols"><option value="1">1 (single column)</option><option value="2">2 (TE244 default)</option><option value="3">3</option></select>
+          </div>
+        </div>
+        <div class="fg3">
+          <div class="fg"><label class="fl">Column Gap (mm)</label><input id="s-tsc-cgap" type="number" step="0.5" placeholder="2"/></div>
+          <div class="fg"><label class="fl">Row Gap (mm)</label><input id="s-tsc-rgap" type="number" step="0.5" placeholder="2"/></div>
+          <div class="fg"><label class="fl">Printer Name (hint)</label><input id="s-tsc-printer" placeholder="TSC TE244"/></div>
+        </div>
+        <button class="btn btn-p" onclick="saveTSCSettings()">Save Label Settings</button>
+        <button class="btn btn-gold" onclick="testTSCPrint()" style="margin-left:8px">🖨 Print Test Label</button>
+      </div>
+
+      <div class="card">
         <div class="ct" style="margin-bottom:10px">About</div>
         <p style="color:var(--text2);font-size:12px;line-height:1.7">Alankar Pooja Stores Sales Management System<br/>Version 1.0.0 · Offline-first · Local SQLite storage<br/>Built with Electron.js · No internet required</p>
       </div>
@@ -792,32 +811,35 @@ input[readonly]{background:var(--bg3);color:var(--text2)}
 </div>
 
 <div id="m-labelsheet" class="overlay">
-  <div class="modal" style="width:420px">
-    <div class="modal-hd"><span class="modal-title">Print Barcode Label Sheet</span><button class="close-btn" onclick="cm('m-labelsheet')">×</button></div>
-    <div id="ls-product-info" style="font-size:13px;padding:11px;background:var(--bg3);border-radius:var(--radius);margin-bottom:14px"></div>
+  <div class="modal" style="width:440px">
+    <div class="modal-hd"><span class="modal-title">🏷️ Print TSC Labels</span><button class="close-btn" onclick="cm('m-labelsheet')">×</button></div>
+    <div id="ls-product-info" style="font-size:13.5px;padding:13px;background:var(--bg3);border-radius:var(--radius);margin-bottom:14px"></div>
+    <div id="ls-tsc-info" style="font-size:11.5px;color:var(--text2);padding:10px 12px;background:#FFF7DC;border:1px solid var(--gold);border-radius:var(--radius);margin-bottom:14px"></div>
     <div class="fg2">
       <div class="fg">
-        <label class="fl">Labels per Page</label>
-        <select id="ls-count">
-          <option value="24">24 (large — 4×6, 50×40mm)</option>
-          <option value="40" selected>40 (medium — 4×10, 50×28mm)</option>
-          <option value="65">65 (small — 5×13, 38×21mm Avery L7160)</option>
-        </select>
+        <label class="fl">Number of Labels to Print <span class="req">*</span></label>
+        <input id="ls-qty" type="number" value="10" min="1" max="500"/>
       </div>
       <div class="fg">
-        <label class="fl">Number of Pages</label>
-        <input id="ls-pages" type="number" value="1" min="1" max="20"/>
+        <label class="fl">Output Mode</label>
+        <select id="ls-mode">
+          <option value="tsc" selected>TSC Roll (continuous)</option>
+          <option value="a4">A4 Sheet (fallback)</option>
+        </select>
       </div>
     </div>
-    <div class="fg" style="margin-bottom:12px">
-      <label class="fl"><input type="checkbox" id="ls-showprice" checked style="width:auto;margin-right:6px"/> Print MRP / Price on label</label>
+    <div class="fg" style="margin-bottom:10px">
+      <label class="fl"><input type="checkbox" id="ls-showprice" checked style="width:auto;margin-right:6px"/> Show price (MRP)</label>
     </div>
-    <div class="fg" style="margin-bottom:12px">
-      <label class="fl"><input type="checkbox" id="ls-showname" checked style="width:auto;margin-right:6px"/> Print product name on label</label>
+    <div class="fg" style="margin-bottom:10px">
+      <label class="fl"><input type="checkbox" id="ls-showname" checked style="width:auto;margin-right:6px"/> Show product name</label>
+    </div>
+    <div class="fg" style="margin-bottom:14px">
+      <label class="fl"><input type="checkbox" id="ls-showstore" checked style="width:auto;margin-right:6px"/> Show store name</label>
     </div>
     <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px">
       <button class="btn" onclick="cm('m-labelsheet')">Cancel</button>
-      <button class="btn btn-p" onclick="printLabelSheet()">🖨 Print Sheet</button>
+      <button class="btn btn-p" onclick="printTSCLabels()">🖨 Print Labels</button>
     </div>
   </div>
 </div>
@@ -1124,11 +1146,44 @@ async function loadSettings() {
   document.getElementById('s-cashier').value = settings.cashier_name || 'Admin';
   document.getElementById('s-addr').value = settings.store_address || '';
   document.getElementById('s-footer').value = settings.bill_footer || '';
+  // TSC label settings
+  document.getElementById('s-tsc-w').value = settings.tsc_label_width || '38';
+  document.getElementById('s-tsc-h').value = settings.tsc_label_height || '25';
+  document.getElementById('s-tsc-cols').value = settings.tsc_columns || '2';
+  document.getElementById('s-tsc-cgap').value = settings.tsc_column_gap || '2';
+  document.getElementById('s-tsc-rgap').value = settings.tsc_row_gap || '2';
+  document.getElementById('s-tsc-printer').value = settings.tsc_printer_name || 'TSC TE244';
   document.getElementById('store-name-display').textContent = settings.store_name || 'Alankar Pooja Stores';
   document.getElementById('store-gstin-display').textContent = 'GSTIN: ' + (settings.gstin || '-');
   // Pre-fill cashier on billing page
   const bCashier = document.getElementById('b-cashier');
   if (bCashier && !bCashier.value) bCashier.value = settings.cashier_name || 'Admin';
+}
+
+async function saveTSCSettings() {
+  const newTSC = {
+    tsc_label_width:  document.getElementById('s-tsc-w').value || '38',
+    tsc_label_height: document.getElementById('s-tsc-h').value || '25',
+    tsc_columns:      document.getElementById('s-tsc-cols').value || '2',
+    tsc_column_gap:   document.getElementById('s-tsc-cgap').value || '2',
+    tsc_row_gap:      document.getElementById('s-tsc-rgap').value || '2',
+    tsc_printer_name: document.getElementById('s-tsc-printer').value || 'TSC TE244',
+  };
+  await API.settings.setMany(newTSC);
+  Object.assign(settings, newTSC);
+  showAlert(`Label settings saved: ${newTSC.tsc_label_width}mm × ${newTSC.tsc_label_height}mm, ${newTSC.tsc_columns}-up`);
+}
+
+async function testTSCPrint() {
+  // Print 4 test labels with sample product data
+  const testProduct = {
+    name: 'TEST PRODUCT',
+    barcode: '8901234567890',
+    selling_price: 99,
+    hsn: '3307',
+    gst_rate: 5,
+  };
+  buildAndPrintTSCLabels(testProduct, 4);
 }
 
 async function saveSettings() {
@@ -1529,6 +1584,7 @@ function renderProds(list) {
       <td class="${p.stock<p.min_stock?'low':''}">${p.stock}</td>
       <td><div class="row-actions">
         <button class="btn btn-sm btn-icon" onclick="quickStockModal(${p.id})" title="Quick add stock">+</button>
+        <button class="btn btn-sm btn-icon btn-gold" onclick="quickTSCLabel(${p.id})" title="Print TSC labels">🏷️</button>
         <button class="btn btn-sm btn-icon" onclick="editProd(${p.id})" title="Edit">✎</button>
         <button class="btn btn-d btn-sm btn-icon" onclick="delProd(${p.id})" title="Delete">×</button>
       </div></td>
@@ -1618,6 +1674,31 @@ async function saveProd() {
     if (String(e.message||e).includes('UNIQUE')) showAlert('A product with this barcode already exists','e');
     else showError(e);
   }
+}
+
+function quickTSCLabel(pid) {
+  const p = allProds.find(x => x.id === pid);
+  if (!p) return;
+  // Pre-select the product in the barcode page selector and open modal
+  const sel = document.getElementById('bc-sel');
+  if (sel) {
+    const opt = [...sel.options].find(o => parseInt(o.value) === pid);
+    if (opt) sel.value = String(pid);
+    else {
+      // Add option if it's not loaded yet
+      const newOpt = document.createElement('option');
+      newOpt.value = pid; newOpt.textContent = p.name;
+      sel.appendChild(newOpt); sel.value = String(pid);
+    }
+  }
+  document.getElementById('ls-product-info').innerHTML = `<strong>${esc(p.name)}</strong><br/>Barcode: <code style="background:#fff;padding:2px 6px;border-radius:3px">${esc(p.barcode)}</code> · MRP: ₹${p.selling_price}`;
+  const w = settings.tsc_label_width || '38';
+  const h = settings.tsc_label_height || '25';
+  const cols = settings.tsc_columns || '2';
+  const cgap = settings.tsc_column_gap || '2';
+  const pname = settings.tsc_printer_name || 'TSC TE244';
+  document.getElementById('ls-tsc-info').innerHTML = `📐 <b>Current label config:</b> ${w}mm × ${h}mm, ${cols} per row, ${cgap}mm gap · Printer: <b>${esc(pname)}</b><br/>💡 In Print dialog, select <b>${esc(pname)}</b> as the printer.`;
+  om('m-labelsheet');
 }
 
 function quickStockModal(pid) {
@@ -1833,70 +1914,208 @@ function printBarcodeLabel() {
 function openLabelSheetModal() {
   const p = allProds.find(x => x.id === parseInt(document.getElementById('bc-sel').value));
   if (!p) { showAlert('Select a product first','e'); return; }
-  document.getElementById('ls-product-info').innerHTML = `<strong>${esc(p.name)}</strong><br/>Barcode: <code>${esc(p.barcode)}</code> · MRP: ₹${p.selling_price}`;
+  document.getElementById('ls-product-info').innerHTML = `<strong>${esc(p.name)}</strong><br/>Barcode: <code style="background:#fff;padding:2px 6px;border-radius:3px">${esc(p.barcode)}</code> · MRP: ₹${p.selling_price}`;
+  const w = settings.tsc_label_width || '38';
+  const h = settings.tsc_label_height || '25';
+  const cols = settings.tsc_columns || '2';
+  const cgap = settings.tsc_column_gap || '2';
+  const pname = settings.tsc_printer_name || 'TSC TE244';
+  document.getElementById('ls-tsc-info').innerHTML = `📐 <b>Current label config:</b> ${w}mm × ${h}mm, ${cols} per row, ${cgap}mm gap · Printer: <b>${esc(pname)}</b><br/>💡 In Print dialog, select <b>${esc(pname)}</b> as the printer.`;
   om('m-labelsheet');
 }
 
-function printLabelSheet() {
+function printTSCLabels() {
   const p = allProds.find(x => x.id === parseInt(document.getElementById('bc-sel').value));
   if (!p) return;
-  const perPage = parseInt(document.getElementById('ls-count').value);
-  const pages = parseInt(document.getElementById('ls-pages').value) || 1;
-  const showPrice = document.getElementById('ls-showprice').checked;
-  const showName = document.getElementById('ls-showname').checked;
-
-  // Layout configurations
-  const layouts = {
-    24: {cols:4, rows:6, labelW:50, labelH:40, gap:2, bcW:160, bcH:55},  // 50×40mm
-    40: {cols:4, rows:10, labelW:50, labelH:28, gap:2, bcW:160, bcH:38}, // 50×28mm
-    65: {cols:5, rows:13, labelW:38, labelH:21, gap:2, bcW:120, bcH:28}, // 38×21mm Avery
+  const qty = parseInt(document.getElementById('ls-qty').value) || 1;
+  const mode = document.getElementById('ls-mode').value;
+  const opts = {
+    showPrice: document.getElementById('ls-showprice').checked,
+    showName:  document.getElementById('ls-showname').checked,
+    showStore: document.getElementById('ls-showstore').checked,
   };
-  const L = layouts[perPage];
+  cm('m-labelsheet');
+  if (mode === 'a4') buildAndPrintA4Sheet(p, qty, opts);
+  else buildAndPrintTSCLabels(p, qty, opts);
+}
 
-  // Pre-render barcode once at high resolution
-  const tmpCanvas = document.createElement('canvas');
-  tmpCanvas.width = 400; tmpCanvas.height = 120;
-  drawBarcode(p.barcode||'', tmpCanvas, {showText:false, margin:18});
-  const bcImg = tmpCanvas.toDataURL();
+// TSC ROLL PRINT — labels in 2-up rows continuously, optimized for TSC TE244 203DPI
+function buildAndPrintTSCLabels(product, qty, opts) {
+  opts = opts || {};
+  const showPrice = opts.showPrice !== false;
+  const showName  = opts.showName  !== false;
+  const showStore = opts.showStore !== false;
+  const s = settings;
 
-  // Build labels
-  let labelsHTML = '';
-  for (let pg = 0; pg < pages; pg++) {
-    let pageHTML = '<div class="page">';
-    for (let i = 0; i < perPage; i++) {
-      pageHTML += `<div class="lbl">
-        ${showName ? `<div class="lbl-name">${esc(p.name)}</div>` : ''}
-        <img src="${bcImg}" class="lbl-bc"/>
-        <div class="lbl-num">${esc(p.barcode||'')}</div>
-        ${showPrice ? `<div class="lbl-price">MRP: ₹${p.selling_price}</div>` : ''}
-      </div>`;
-    }
-    pageHTML += '</div>';
-    labelsHTML += pageHTML;
+  const labelW = parseFloat(s.tsc_label_width)  || 38;  // mm
+  const labelH = parseFloat(s.tsc_label_height) || 25;  // mm
+  const cols   = parseInt(s.tsc_columns)        || 2;
+  const cGap   = parseFloat(s.tsc_column_gap)   || 2;   // mm
+  const rGap   = parseFloat(s.tsc_row_gap)      || 2;   // mm
+
+  // Total "page" width = labels + gaps
+  const pageW = (labelW * cols) + (cGap * (cols - 1));
+  // Each printed "page" = one row of labels (TSC feeds one row at a time)
+  const pageH = labelH + rGap;
+  const rows = Math.ceil(qty / cols);
+
+  // Pre-render barcode at high resolution for crispness
+  const bcCanvas = document.createElement('canvas');
+  // Scale: at 203 DPI, 1mm = 8 pixels. Make barcode area ~30mm wide × 8mm tall
+  bcCanvas.width = 400;
+  bcCanvas.height = 90;
+  drawBarcode(product.barcode || '', bcCanvas, {showText:false, margin:16});
+  const bcImg = bcCanvas.toDataURL();
+
+  // Build label HTML
+  function makeLabel() {
+    return `<div class="lbl">
+      ${showStore ? `<div class="lbl-store">${esc((s.store_name||'STORE').toUpperCase())}</div>` : ''}
+      ${showName  ? `<div class="lbl-name">${esc(truncate(product.name, 24))}</div>` : ''}
+      <img src="${bcImg}" class="lbl-bc" alt="bc"/>
+      <div class="lbl-num">${esc(product.barcode||'')}</div>
+      ${showPrice ? `<div class="lbl-price">Rs.${Number(product.selling_price).toFixed(2)}</div>` : ''}
+    </div>`;
   }
 
-  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Label Sheet - ${esc(p.name)}</title>
+  let pagesHTML = '';
+  let printedCount = 0;
+  for (let r = 0; r < rows; r++) {
+    let rowHTML = '<div class="page"><div class="row">';
+    for (let c = 0; c < cols; c++) {
+      if (printedCount < qty) {
+        rowHTML += makeLabel();
+        printedCount++;
+      } else {
+        rowHTML += '<div class="lbl lbl-blank"></div>';
+      }
+    }
+    rowHTML += '</div></div>';
+    pagesHTML += rowHTML;
+  }
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Labels - ${esc(product.name)}</title>
   <style>
-    *{margin:0;padding:0;box-sizing:border-box;-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important}
-    @page{size:A4;margin:5mm}
-    body{font-family:Arial;color:#000;background:#fff}
-    .page{display:grid;grid-template-columns:repeat(${L.cols},${L.labelW}mm);gap:${L.gap}mm;padding:5mm;page-break-after:always;justify-content:center}
+    *{margin:0;padding:0;box-sizing:border-box;-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;color-adjust:exact !important}
+    @page{
+      size: ${pageW}mm ${pageH}mm;
+      margin: 0;
+    }
+    html,body{background:#fff;color:#000;font-family:Arial,sans-serif;width:${pageW}mm}
+    .page{
+      width:${pageW}mm;
+      height:${pageH}mm;
+      page-break-after:always;
+      page-break-inside:avoid;
+      overflow:hidden;
+    }
     .page:last-child{page-break-after:auto}
-    .lbl{width:${L.labelW}mm;height:${L.labelH}mm;border:1px dashed #888;padding:1mm;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;text-align:center}
-    .lbl-name{font-size:8pt;font-weight:700;line-height:1.1;margin-bottom:1mm;color:#000;max-height:6mm;overflow:hidden}
-    .lbl-bc{width:${L.bcW*0.16}mm;height:${L.bcH*0.16}mm;max-width:${L.labelW-4}mm;display:block}
-    .lbl-num{font-size:6pt;font-family:'Courier New',monospace;font-weight:700;letter-spacing:0.5px;color:#000}
-    .lbl-price{font-size:9pt;font-weight:900;color:#000;margin-top:0.5mm}
+    .row{display:flex;gap:${cGap}mm;width:${pageW}mm;height:${labelH}mm}
+    .lbl{
+      width:${labelW}mm;
+      height:${labelH}mm;
+      padding:0.8mm 1.2mm;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      overflow:hidden;
+      text-align:center;
+      background:#fff;
+      color:#000;
+    }
+    .lbl-blank{visibility:hidden}
+    .lbl-store{font-size:6pt;font-weight:900;line-height:1;color:#000;letter-spacing:0.3px;margin-bottom:0.3mm;text-transform:uppercase}
+    .lbl-name{font-size:6.5pt;font-weight:700;line-height:1.05;color:#000;margin-bottom:0.4mm;max-height:3mm;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;width:100%}
+    .lbl-bc{
+      width:${Math.min(labelW - 4, 34)}mm;
+      height:${Math.min(labelH * 0.4, 9)}mm;
+      display:block;
+      image-rendering:pixelated;
+      image-rendering:-moz-crisp-edges;
+      image-rendering:crisp-edges;
+    }
+    .lbl-num{font-size:5.5pt;font-family:'Courier New',monospace;font-weight:700;letter-spacing:0.4px;color:#000;line-height:1;margin-top:0.3mm}
+    .lbl-price{font-size:8pt;font-weight:900;color:#000;line-height:1.1;margin-top:0.3mm}
     @media print{
-      .lbl{border:none}
-      body{background:#fff}
+      html,body{margin:0;padding:0}
     }
   </style></head><body>
-    ${labelsHTML}
+    ${pagesHTML}
     <script>window.onload=function(){setTimeout(function(){window.print();},250);};<\/script>
   </body></html>`;
   API.printHTML(html);
-  cm('m-labelsheet');
+}
+
+// A4 Fallback (for testing without TSC)
+function buildAndPrintA4Sheet(product, qty, opts) {
+  opts = opts || {};
+  const showPrice = opts.showPrice !== false;
+  const showName  = opts.showName  !== false;
+  const showStore = opts.showStore !== false;
+  const s = settings;
+
+  const labelW = parseFloat(s.tsc_label_width)  || 38;
+  const labelH = parseFloat(s.tsc_label_height) || 25;
+  const cGap   = parseFloat(s.tsc_column_gap)   || 2;
+  const rGap   = parseFloat(s.tsc_row_gap)      || 2;
+
+  // Fit as many labels as possible on A4 (210×297mm) with 10mm margins
+  const usableW = 190;
+  const usableH = 277;
+  const labelsPerRow = Math.floor((usableW + cGap) / (labelW + cGap));
+  const rowsPerPage  = Math.floor((usableH + rGap) / (labelH + rGap));
+  const perPage = labelsPerRow * rowsPerPage;
+
+  const bcCanvas = document.createElement('canvas');
+  bcCanvas.width = 400; bcCanvas.height = 90;
+  drawBarcode(product.barcode || '', bcCanvas, {showText:false, margin:16});
+  const bcImg = bcCanvas.toDataURL();
+
+  function makeLabel() {
+    return `<div class="lbl">
+      ${showStore ? `<div class="lbl-store">${esc((s.store_name||'STORE').toUpperCase())}</div>` : ''}
+      ${showName  ? `<div class="lbl-name">${esc(truncate(product.name, 24))}</div>` : ''}
+      <img src="${bcImg}" class="lbl-bc"/>
+      <div class="lbl-num">${esc(product.barcode||'')}</div>
+      ${showPrice ? `<div class="lbl-price">Rs.${Number(product.selling_price).toFixed(2)}</div>` : ''}
+    </div>`;
+  }
+
+  let pagesHTML = '';
+  let printed = 0;
+  while (printed < qty) {
+    let pg = '<div class="a4page"><div class="grid">';
+    for (let i = 0; i < perPage && printed < qty; i++) { pg += makeLabel(); printed++; }
+    pg += '</div></div>';
+    pagesHTML += pg;
+  }
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Labels - ${esc(product.name)}</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important}
+    @page{size:A4;margin:10mm}
+    body{font-family:Arial;color:#000;background:#fff}
+    .a4page{width:${usableW}mm;page-break-after:always}
+    .a4page:last-child{page-break-after:auto}
+    .grid{display:grid;grid-template-columns:repeat(${labelsPerRow},${labelW}mm);column-gap:${cGap}mm;row-gap:${rGap}mm}
+    .lbl{width:${labelW}mm;height:${labelH}mm;padding:0.8mm 1.2mm;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;text-align:center;border:0.3pt dashed #888}
+    .lbl-store{font-size:6pt;font-weight:900;line-height:1;color:#000;margin-bottom:0.3mm}
+    .lbl-name{font-size:6.5pt;font-weight:700;line-height:1.05;color:#000;margin-bottom:0.4mm;max-height:3mm;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;width:100%}
+    .lbl-bc{width:${Math.min(labelW-4,34)}mm;height:${Math.min(labelH*0.4,9)}mm;display:block;image-rendering:crisp-edges}
+    .lbl-num{font-size:5.5pt;font-family:'Courier New',monospace;font-weight:700;color:#000;margin-top:0.3mm}
+    .lbl-price{font-size:8pt;font-weight:900;color:#000;margin-top:0.3mm}
+    @media print{.lbl{border:none}}
+  </style></head><body>
+    ${pagesHTML}
+    <script>window.onload=function(){setTimeout(function(){window.print();},250);};<\/script>
+  </body></html>`;
+  API.printHTML(html);
+}
+
+function truncate(str, n) {
+  if (!str) return '';
+  return str.length > n ? str.slice(0, n - 1) + '…' : str;
 }
 
 async function loadCredit() {
